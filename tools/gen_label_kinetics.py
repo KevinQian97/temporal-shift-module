@@ -22,7 +22,8 @@ if __name__ == '__main__':
 
     print(dict_categories)
 
-    files_input = ['kinetics_val.csv', 'kinetics_train.csv']
+    # files_input = ['kinetics_val.csv', 'kinetics_train.csv']
+    files_input = ['kinetics_val.csv','kinetics_train.csv']
     files_output = ['val_videofolder.txt', 'train_videofolder.txt']
     for (filename_input, filename_output) in zip(files_input, files_output):
         count_cat = {k: 0 for k in dict_categories.keys()}
@@ -49,6 +50,8 @@ if __name__ == '__main__':
             curIDX = idx_categories[i]
             # counting the number of frames in each video folders
             img_dir = os.path.join(dataset_path, categories_list[i], curFolder)
+            print(curFolder)
+            # output.append('%s %d %d'%(os.path.join(categories_list[i], curFolder), 100, curIDX))
             if not os.path.exists(img_dir):
                 missing_folders.append(img_dir)
                 # print(missing_folders)

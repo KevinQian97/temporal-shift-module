@@ -8,14 +8,14 @@
 import os
 
 
-dataset_path = '/ssd/video/kinetics/images256/'
-label_path = '/ssd/video/kinetics/labels'
+dataset_path = '/media/hdd1/yijunq/MEVA_TSM_PROP/'
+label_path = '/media/hdd1/yijunq/MEVA_TSM_LABEL'
 
 if __name__ == '__main__':
     with open('kinetics_label_map.txt') as f:
         categories = f.readlines()
         categories = [c.strip().replace(' ', '_').replace('"', '').replace('(', '').replace(')', '').replace("'", '') for c in categories]
-    assert len(set(categories)) == 400
+    assert len(set(categories)) == 37
     dict_categories = {}
     for i, category in enumerate(categories):
         dict_categories[category] = i
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     print(dict_categories)
 
     # files_input = ['kinetics_val.csv', 'kinetics_train.csv']
-    files_input = ['kinetics_val.csv','kinetics_train.csv']
+    files_input = ['validation.csv','train.csv']
     files_output = ['val_videofolder.txt', 'train_videofolder.txt']
     for (filename_input, filename_output) in zip(files_input, files_output):
         count_cat = {k: 0 for k in dict_categories.keys()}
@@ -33,6 +33,7 @@ if __name__ == '__main__':
         idx_categories = []
         categories_list = []
         for line in lines:
+            print(line)
             line = line.rstrip()
             items = line.split(',')
             folders.append(items[1] + '_' + items[2])

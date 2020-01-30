@@ -5,7 +5,7 @@
 
 import os
 
-ROOT_DATASET = '/ssd/video/'  # '/data/jilin/'
+ROOT_DATASET = '/'  # '/data/jilin/'
 
 
 def return_ucf101(modality):
@@ -90,11 +90,22 @@ def return_jester(modality):
 
 
 def return_kinetics(modality):
-    filename_categories = 400
+    filename_categories = 37
     if modality == 'RGB':
-        root_data = ROOT_DATASET + 'kinetics/images'
-        filename_imglist_train = 'kinetics/labels/train_videofolder.txt'
-        filename_imglist_val = 'kinetics/labels/val_videofolder.txt'
+        root_data = ROOT_DATASET + 'MEVA_TSM_PROP'
+        filename_imglist_train = 'MEVA_TSM_LABEL/train_videofolder.txt'
+        filename_imglist_val = 'MEVA_TSM_LABEL/val_videofolder.txt'
+        prefix = 'img_{:05d}.jpg'
+    else:
+        raise NotImplementedError('no such modality:' + modality)
+    return filename_categories, filename_imglist_train, filename_imglist_val, root_data, prefix
+
+def return_MEVA(modality):
+    filename_categories = 37
+    if modality == 'RGB':
+        root_data = ROOT_DATASET + 'MEVA_TSM_PROP'
+        filename_imglist_train = 'MEVA_TSM_LABEL/train_videofolder.txt'
+        filename_imglist_val = 'MEVA_TSM_LABEL/val_videofolder.txt'
         prefix = 'img_{:05d}.jpg'
     else:
         raise NotImplementedError('no such modality:' + modality)
@@ -104,7 +115,7 @@ def return_kinetics(modality):
 def return_dataset(dataset, modality):
     dict_single = {'jester': return_jester, 'something': return_something, 'somethingv2': return_somethingv2,
                    'ucf101': return_ucf101, 'hmdb51': return_hmdb51,
-                   'kinetics': return_kinetics }
+                   'kinetics': return_kinetics, "MEVA": return_MEVA }
     if dataset in dict_single:
         file_categories, file_imglist_train, file_imglist_val, root_data, prefix = dict_single[dataset](modality)
     else:

@@ -46,11 +46,11 @@ def relocate_vids(vid):
         else:
             print(subset)
             raise RuntimeError("find error subset")
-        for i in range(len(frames)):
-            frame = frames[i]
-            new_frame = "img_"+str(i+1).zfill(5)+".jpg"
-            # new_frame = "img_"+frame.split("_")[1]
-            shutil.copy(os.path.join(data_folder,vid,vid,frame),os.path.join(out_data_folder,label,vid+"_1",new_frame))
+        # for i in range(len(frames)):
+        #     frame = frames[i]
+        #     new_frame = "img_"+str(i+1).zfill(5)+".jpg"
+        #     # new_frame = "img_"+frame.split("_")[1]
+        #     shutil.copy(os.path.join(data_folder,vid,vid,frame),os.path.join(out_data_folder,label,vid+"_1",new_frame))
 
 
     else:
@@ -63,17 +63,17 @@ def relocate_vids(vid):
             if subset == "training":
                 train_writer.writerow([label,vid,epoc*90+1,min(90,len(frames)-epoc*90),"train"])
             elif subset == "validation":
-                train_writer.writerow([label,vid,epoc*90+1,min(90,len(frames)-epoc*90),"validate"])
+                val_writer.writerow([label,vid,epoc*90+1,min(90,len(frames)-epoc*90),"validate"])
             else:
                 print(subset)
                 raise RuntimeError("find error subset")
-            if not os.path.exists(os.path.join(out_data_folder,label,vid+"_"+str(epoc*90+1))):
-                os.makedirs(os.path.join(out_data_folder,label,vid+"_"+str(epoc*90+1)))
-            for i in range(epoc*90,min(len(frames),(epoc+1)*90)):
-                frame = frames[i]
-                new_frame = "img_"+str(i-epoc*90+1).zfill(5)+".jpg"
-                # new_frame = "img_"+frame.split("_")[1]
-                shutil.copy(os.path.join(data_folder,vid,vid,frame),os.path.join(out_data_folder,label,vid+"_"+str(epoc*90+1),new_frame))
+            # if not os.path.exists(os.path.join(out_data_folder,label,vid+"_"+str(epoc*90+1))):
+            #     os.makedirs(os.path.join(out_data_folder,label,vid+"_"+str(epoc*90+1)))
+            # for i in range(epoc*90,min(len(frames),(epoc+1)*90)):
+            #     frame = frames[i]
+            #     new_frame = "img_"+str(i-epoc*90+1).zfill(5)+".jpg"
+            #     # new_frame = "img_"+frame.split("_")[1]
+            #     shutil.copy(os.path.join(data_folder,vid,vid,frame),os.path.join(out_data_folder,label,vid+"_"+str(epoc*90+1),new_frame))
     return
 
 
@@ -86,11 +86,13 @@ def make_cat_folders(out_data_folder,event_dict):
 
 
 def main():
-    make_cat_folders(out_data_folder,event_dict)
-    n_jobs=48
-    pool = Pool(n_jobs)
-    pool.map(relocate_vids, vids)
-    pool.close()
+    # make_cat_folders(out_data_folder,event_dict)
+    # n_jobs=48
+    # pool = Pool(n_jobs)
+    # pool.map(relocate_vids, vids)
+    # pool.close()
+    for vid in vids:
+        relocate_vids(vid)
 
 
 main()

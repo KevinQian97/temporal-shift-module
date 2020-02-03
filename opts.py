@@ -65,7 +65,7 @@ parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
 parser.add_argument('--gpus', nargs='+', type=int, default=None)
 parser.add_argument('--flow_prefix', default="", type=str)
 parser.add_argument('--root_log',type=str, default='log')
-parser.add_argument('--root_model', type=str, default='checkpoint')
+parser.add_argument('--root_model', type=str, default='/checkpoints')
 
 parser.add_argument('--shift', default=False, action="store_true", help='use shift for models')
 parser.add_argument('--shift_div', default=8, type=int, help='number of div for shift (default: 8)')

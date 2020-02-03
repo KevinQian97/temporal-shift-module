@@ -16,6 +16,8 @@ from ops.models import TSN
 from ops.transforms import *
 from ops import dataset_config
 from torch.nn import functional as F
+import json
+import os
 
 # options
 parser = argparse.ArgumentParser(description="TSM testing on the full validation set")
@@ -32,12 +34,12 @@ parser.add_argument('--full_res', default=False, action="store_true",
 parser.add_argument('--test_crops', type=int, default=1)
 parser.add_argument('--coeff', type=str, default=None)
 parser.add_argument('--batch_size', type=int, default=1)
-parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=0, type=int, metavar='N',
                     help='number of data loading workers (default: 8)')
 
 # for true test
 parser.add_argument('--test_list', type=str, default=None)
-parser.add_argument('--csv_file', type=str, default=None)
+parser.add_argument('--actev',action="store_true", default=True)
 
 parser.add_argument('--softmax', default=False, action="store_true", help='use softmax')
 
@@ -48,9 +50,25 @@ parser.add_argument('--gpus', nargs='+', type=int, default=None)
 parser.add_argument('--img_feature_dim',type=int, default=256)
 parser.add_argument('--num_set_segments',type=int, default=1,help='TODO: select multiply set of n-frames from a video')
 parser.add_argument('--pretrain', type=str, default='imagenet')
+parser.add_argument('--topk', type=int, default=37)
+parser.add_argument('--class_num', type=int, default=37)
+parser.add_argument('--out_path', type=str, default="/results")
+
+
 
 args = parser.parse_args()
 
+event_dict = ["heu_negative","person_closes_facility_door","person_closes_vehicle_door","Closing_Trunk","person_enters_through_structure","person_enters_vehicle","person_exits_through_structure","person_exits_vehicle","person_loads_vehicle","Open_Trunk","person_opens_facility_door","person_opens_vehicle_door","Transport_HeavyCarry","person_unloads_vehicle","vehicle_turning_left","vehicle_turning_right","vehicle_u_turn","Riding","Talking","specialized_talking_phone","specialized_texting_phone","person_sitting_down","person_standing_up","person_reading_document","object_transfer","person_picks_up_object","person_sets_down_object","hand_interaction","person_person_embrace","person_purchasing","person_laptop_interaction","vehicle_stopping","vehicle_starting","vehicle_reversing","vehicle_picks_up_person","vehicle_drops_off_person","abandon_package"]
+
+vehicle_events_list = ["vehicle_turning_left","vehicle_turning_right","vehicle_u_turn","vehicle_stopping","vehicle_starting","vehicle_reversing"]
+person_events_list = ["person_closes_facility_door","person_enters_through_structure","person_exits_through_structure","person_opens_facility_door",
+"Talking","specialized_talking_phone","specialized_texting_phone","person_picks_up_object","person_sets_down_object","hand_interaction","person_person_embrace","person_purchasing","person_laptop_interaction","abandon_package","Riding","person_sitting_down","person_standing_up","person_reading_document","object_transfer"]
+person_vehicle_interact_list = ["person_closes_vehicle_door","Closing_Trunk","person_enters_vehicle","person_exits_vehicle","person_loads_vehicle","Open_Trunk","person_opens_vehicle_door","Transport_HeavyCarry","Unloading","vehicle_picks_up_person","vehicle_drops_off_person","person_unloads_vehicle"]
+
+if args.topk > args.class_num:
+    print(args.topk)
+    print(args.class_num)
+    raise RuntimeError("class number missmatch")
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -68,6 +86,67 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+def getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict):
+    new_dict = {}
+    new_dict["filesProcessed"] = []
+    new_dict["activities"] = []
+    act_list = []
+    for vid_name in vid_names:
+        prefix_name = vid_name.split("/")[0]
+        if prefix_name not in new_dict["filesProcessed"]:
+            new_dict["filesProcessed"].append(prefix_name)
+    for name, pred_all, prob_all in zip(vid_names, video_pred_topall,video_prob_topall):
+        prefix_name = name.split("/")[0]
+        start_frame = name.split("/")[1].split("_")[0]
+        end_frame = name.split("/")[1].split("_")[1]
+        for i in range(len(pred_all)):
+            pred = pred_all[i]
+            event = event_dict[int(pred)]
+            if event=="heu_negative":
+                continue
+            prob = prob_all[i]
+            if event not in act_list and event!="heu_negative":
+                act_list.append(event)
+            act_dict = {}
+            act_dict["activity"] = event
+            act_dict["activityID"] = int(pred)
+            act_dict["presenceConf"] = float(prob)
+            start = start_frame
+            end = end_frame
+                # raise RuntimeError("stop")
+            act_dict["localization"] = {prefix_name:{start:1,end:0}}
+            new_dict["activities"].append(act_dict)
+    file_dict = get_file_index(new_dict["filesProcessed"])
+    eve_dict = get_activity_index(act_list)
+    return new_dict,file_dict,eve_dict
+            
+
+def get_obj_types(event):
+    if event in vehicle_events_list:
+        return ["Vehicle"]
+    elif event in person_events_list:
+        return ["Person"]
+    elif event in person_vehicle_interact_list:
+        return ["Vehicle","Person"]
+    else:
+        print (event)
+        raise RuntimeError("unseen events")
+
+def get_activity_index(activities):
+    new_dict = {}
+    for act in activities:
+        new_dict[act] = {"objectTypes":get_obj_types(act)}
+    return new_dict
+
+def get_file_index(filesProcessed):
+    new_dict = {}
+    for f in filesProcessed:
+        new_dict[f]={"framerate": 30.0, "selected": {"0": 1, "9000": 0}}
+    return new_dict
+
+
 
 
 def accuracy(output, target, topk=(1,)):
@@ -281,36 +360,69 @@ for i, data_label_pairs in enumerate(zip(*data_iter_list)):
         top1.update(prec1.item(), this_label.numel())
         top5.update(prec5.item(), this_label.numel())
         if i % 20 == 0:
+            # print(len(output))
+            # video_pred_topall = [np.argsort(np.mean(x[0], axis=0).reshape(-1))[::-1][:args.topk] for x in output]
+            # video_prob_topall = [np.sort(np.mean(x[0], axis=0).reshape(-1))[::-1][:args.topk] for x in output]
+            # print(video_pred_topall)
+            # print(video_prob_topall)
+            # print(output[0])
+            # raise RuntimeError("snip test")
             print('video {} done, total {}/{}, average {:.3f} sec/video, '
                   'moving Prec@1 {:.3f} Prec@5 {:.3f}'.format(i * args.batch_size, i * args.batch_size, total_num,
                                                               float(cnt_time) / (i+1) / args.batch_size, top1.avg, top5.avg))
 
 video_pred = [np.argmax(x[0]) for x in output]
-video_pred_top5 = [np.argsort(np.mean(x[0], axis=0).reshape(-1))[::-1][:5] for x in output]
+# video_pred_top5 = [np.argsort(np.mean(x[0], axis=0).reshape(-1))[::-1][:5] for x in output]
+
+#update to contain probability
+video_pred_topall = [np.argsort(np.mean(x[0], axis=0).reshape(-1))[::-1][:args.topk] for x in output]
+video_prob_topall = [np.sort(np.mean(x[0], axis=0).reshape(-1))[::-1][:args.topk] for x in output]
+
+
 
 video_labels = [x[1] for x in output]
 
 
-if args.csv_file is not None:
-    print('=> Writing result to csv file: {}'.format(args.csv_file))
-    with open(test_file_list[0].replace('test_videofolder.txt', 'category.txt')) as f:
-        categories = f.readlines()
-    categories = [f.strip() for f in categories]
+
+if args.actev:
     with open(test_file_list[0]) as f:
         vid_names = f.readlines()
     vid_names = [n.split(' ')[0] for n in vid_names]
     assert len(vid_names) == len(video_pred)
-    if args.dataset != 'somethingv2':  # only output top1
-        with open(args.csv_file, 'w') as f:
-            for n, pred in zip(vid_names, video_pred):
-                f.write('{};{}\n'.format(n, categories[pred]))
-    else:
-        with open(args.csv_file, 'w') as f:
-            for n, pred5 in zip(vid_names, video_pred_top5):
-                fill = [n]
-                for p in list(pred5):
-                    fill.append(p)
-                f.write('{};{};{};{};{};{}\n'.format(*fill))
+    output_dict,file_dict,eve_dict = getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict)
+    json_str = json.dumps(output_dict,indent=4)
+    with open(os.path.join(args.out_path,"output.json"), 'w') as save_json:
+        save_json.write(json_str)
+    json_str = json.dumps(file_dict,indent=4)
+    with open(os.path.join(args.out_path,"file-index.json"), 'w') as save_json:
+        save_json.write(json_str)
+    json_str = json.dumps(eve_dict,indent=4)
+    with open(os.path.join(args.out_path,"activity-index.json"), 'w') as save_json:
+        save_json.write(json_str)
+    
+
+
+
+# if args.csv_file is not None:
+#     print('=> Writing result to csv file: {}'.format(args.csv_file))
+#     with open(test_file_list[0].replace('test_videofolder.txt', 'category.txt')) as f:
+#         categories = f.readlines()
+#     categories = [f.strip() for f in categories]
+#     with open(test_file_list[0]) as f:
+#         vid_names = f.readlines()
+#     vid_names = [n.split(' ')[0] for n in vid_names]
+#     assert len(vid_names) == len(video_pred)
+#     if args.dataset != 'MEVA':  # only output top1
+#         with open(args.csv_file, 'w') as f:
+#             for n, pred in zip(vid_names, video_pred):
+#                 f.write('{};{}\n'.format(n, categories[pred]))
+#     else:
+#         with open(args.csv_file, 'w') as f:
+#             for n, pred5 in zip(vid_names, video_pred_topall):
+#                 fill = [n]
+#                 for p in list(pred5):
+#                     fill.append(p)
+#                 f.write('{};{};{};{};{};{}\n'.format(*fill))
 
 
 cf = confusion_matrix(video_labels, video_pred).astype(float)

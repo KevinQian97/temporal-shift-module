@@ -287,6 +287,7 @@ for i, data_label_pairs in enumerate(zip(*data_iter_list)):
 
 video_pred = [np.argmax(x[0]) for x in output]
 video_pred_top5 = [np.argsort(np.mean(x[0], axis=0).reshape(-1))[::-1][:5] for x in output]
+video_pred_top37 = [np.argsort(np.mean(x[0], axis=0).reshape(-1))[::-1][:37] for x in output]
 
 video_labels = [x[1] for x in output]
 
@@ -306,9 +307,9 @@ if args.csv_file is not None:
                 f.write('{};{}\n'.format(n, categories[pred]))
     else:
         with open(args.csv_file, 'w') as f:
-            for n, pred5 in zip(vid_names, video_pred_top5):
+            for n, pred37 in zip(vid_names, video_pred_top37):
                 fill = [n]
-                for p in list(pred5):
+                for p in list(pred37):
                     fill.append(p)
                 f.write('{};{};{};{};{};{}\n'.format(*fill))
 

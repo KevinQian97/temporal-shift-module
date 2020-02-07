@@ -5,14 +5,14 @@ python main.py MEVA RGB \
      --gd 20 --lr 0.001 --lr_steps 10 20 --epochs 25 \
      --batch-size 32 -j 0 --dropout 0.8 --consensus_type=avg --eval-freq=1 \
      --shift --shift_div=8 --shift_place=blockres \
-     --gpus 0 1 2 3 --non_local --dense_sample\
-     --tune_from=/pretrained/TSM_kinetics_RGB_resnet50_shift8_blockres_avg_segment8_e100_dense_nl.pth
+     --gpus 0 1 2 3 \
+     --tune_from=/pretrained/TSM_kinetics_RGB_resnet50_shift8_blockres_avg_segment8_e50.pth
 
 
 python test_models.py MEVA \
-    --weights=/checkpoint/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar \
-    --test_segments=8 --test_crops=3 --topk 37\
-    --batch_size=16 --dense_sample --actev \
+    --weights=/checkpoint/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl_epoch13/ckpt.best.pth.tar \
+    --test_segments=8 --test_crops=10 --topk 37\
+    --batch_size=20  --actev --softmax \
     --gpus 0 1 2 3 --test_list /MEVA_TSM_LABEL/test_videofolder.txt
 
 

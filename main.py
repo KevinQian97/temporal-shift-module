@@ -213,7 +213,7 @@ def main():
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'best_prec1': best_prec1,
-            }, is_best)
+            }, is_best,epoch)
 
 
 def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
@@ -339,8 +339,8 @@ def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
     return top1.avg
 
 
-def save_checkpoint(state, is_best):
-    filename = '%s/%s/ckpt.pth.tar' % (args.root_model, args.store_name)
+def save_checkpoint(state, is_best,epoch):
+    filename = '%s/%s/%s.pth.tar' % (args.root_model, args.store_name, epoch)
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, filename.replace('pth.tar', 'best.pth.tar'))

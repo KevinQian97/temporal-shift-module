@@ -18,6 +18,8 @@ from ops import dataset_config
 from torch.nn import functional as F
 import json
 import os
+from multiprocessing import Pool
+import shutil
 
 # options
 parser = argparse.ArgumentParser(description="TSM testing on the full validation set")
@@ -33,15 +35,15 @@ parser.add_argument('--full_res', default=False, action="store_true",
 
 parser.add_argument('--test_crops', type=int, default=10)
 parser.add_argument('--coeff', type=str, default=None)
-parser.add_argument('--batch_size', type=int, default=32)
+parser.add_argument('--batch_size', type=int, default=36)
 parser.add_argument('-j', '--workers', default=0, type=int, metavar='N',
                     help='number of data loading workers (default: 8)')
 
 # for true test
-parser.add_argument('--test_list', type=str, default=None)
+parser.add_argument('--test_list', type=str, default="/MEVA_TSM_LABEL/test_videofolder.txt")
 parser.add_argument('--actev',action="store_true", default=True)
 
-parser.add_argument('--softmax', default=False, action="store_true", help='use softmax')
+parser.add_argument('--softmax', default=True, action="store_true", help='use softmax')
 
 parser.add_argument('--max_num', type=int, default=-1)
 parser.add_argument('--input_size', type=int, default=224)
@@ -53,10 +55,119 @@ parser.add_argument('--pretrain', type=str, default='imagenet')
 parser.add_argument('--topk', type=int, default=37)
 parser.add_argument('--class_num', type=int, default=37)
 parser.add_argument('--out_path', type=str, default="/results")
+parser.add_argument('--if_prepared',default = False,action="store_true")
+parser.add_argument('--prop_path',type = str,default = "/props")
+parser.add_argument('--data_path',type = str,default = "/imgs")
+parser.add_argument('--inner_data_path',type = str,default = "/inner_imgs")
 
 
 
 args = parser.parse_args()
+
+
+def get_prop_move(vid,prop_id,args):
+    json_file = json.load(open(os.path.join(args.prop_path,vid,"annotation",os.path.splitext(vid)[0],"actv_id_type.json"),"r"))
+    if prop_id not in list(json_file.keys()):
+        print(prop_id)
+        print(vid)
+        raise RuntimeError("prop not in json_file")
+    start_frame = json_file[prop_id]["start_frame"]
+    return int(start_frame)
+
+def relocate_vid_api(opt):
+    vid = opt[0]
+    args = opt[1]
+    num = opt[2]
+    relocate_vids(vid,args,num)
+    return
+
+
+def relocate_vids(vid,args,num):
+    print(vid)
+    print(num)
+    vid_path = os.path.join(args.data_path,vid)
+    frames = os.listdir(vid_path)
+    new_vid_name = vid.split("_")[0]+".avi"
+    prop_id = vid.split("_")[1]
+
+    if len(frames)<10:
+        print("frames less than 10")
+        return
+    if len(frames)<90:
+        frames.sort()
+        mov = get_prop_move(new_vid_name,prop_id,args)
+        start = str(mov)
+        end = str(mov+len(frames))
+        split_name = start+"_"+end+"_"+prop_id
+        if not os.path.exists(os.path.join(args.inner_data_path,new_vid_name,split_name)):
+            os.makedirs(os.path.join(args.inner_data_path,new_vid_name,split_name))
+        # f.write(os.path.join(new_vid_name,split_name)+" "+str(len(frames))+" 0"+"\n")
+        for i in range(len(frames)):
+            frame = frames[i]
+            new_frame = "img_"+str(i+1).zfill(5)+".jpg"
+            # new_frame = "img_"+frame.split("_")[1]
+            src = os.path.join(args.data_path,vid,frame)
+            det = os.path.join(args.inner_data_path,new_vid_name,split_name,new_frame)
+            os.system("cp "+src+" "+det)
+            # shutil.copy(os.path.join(args.data_path,vid,frame),os.path.join(args.inner_data_path,new_vid_name,split_name,new_frame))
+
+    else:
+        frames.sort()
+        # print(frames)
+        epocs = len(frames) // 90
+        mov = get_prop_move(new_vid_name,prop_id,args)
+        for epoc in range(epocs):
+            if len(frames)-epoc*90<30:
+                break
+            start = str(epoc*90+mov)
+            end = str(epoc*90+mov+min(90,len(frames)-epoc*90))
+            split_name = start+"_"+end+"_"+prop_id
+            if not os.path.exists(os.path.join(args.inner_data_path,new_vid_name,split_name)):
+                os.makedirs(os.path.join(args.inner_data_path,new_vid_name,split_name))
+            # f.write(os.path.join(new_vid_name,split_name)+" "+str(min(90,len(frames)-epoc*90))+" 0"+"\n")
+            for i in range(epoc*90,min(len(frames),(epoc+1)*90)):
+                frame = frames[i]
+                new_frame = "img_"+str(i-epoc*90+1).zfill(5)+".jpg"
+                # new_frame = "img_"+frame.split("_")[1]
+                src = os.path.join(args.data_path,vid,frame)
+                det = os.path.join(args.inner_data_path,new_vid_name,split_name,new_frame)
+                os.system("cp "+src+" "+det)
+                # shutil.copy(os.path.join(args.data_path,vid,frame),os.path.join(args.inner_data_path,new_vid_name,split_name,new_frame))
+    return
+
+def prepare_data(args):
+    n_jobs=128
+    vids = os.listdir(args.data_path)
+    print(len(vids))
+    args_list = []
+    num_list = []
+    for i in range(len(vids)):
+        args_list.append(args)
+        num_list.append(i)
+    opts_list = list(zip(vids,args_list,num_list))
+    pool = Pool(n_jobs)
+    pool.map(relocate_vid_api, opts_list)
+    pool.close()
+
+def prepare_testlist(args):
+    f = open(args.test_list,"w")
+    file_path = ""
+    if args.if_prepared:
+        file_path = args.data_path
+    else:
+        file_path = args.inner_data_path
+    vids = os.listdir(file_path)
+    for vid in vids:
+        splits = os.listdir(os.path.join(file_path,vid))
+        for split in splits:
+            f.write(os.path.join(vid,split)+" "+str(len(os.listdir(os.path.join(file_path,vid,split))))+" 0"+"\n")
+    return
+
+
+
+if not args.if_prepared:
+    prepare_data(args)
+prepare_testlist(args)
 
 event_dict = ["heu_negative","person_closes_facility_door","person_closes_vehicle_door","Closing_Trunk","person_enters_through_structure","person_enters_vehicle","person_exits_through_structure","person_exits_vehicle","person_loads_vehicle","Open_Trunk","person_opens_facility_door","person_opens_vehicle_door","Transport_HeavyCarry","person_unloads_vehicle","vehicle_turning_left","vehicle_turning_right","vehicle_u_turn","Riding","Talking","specialized_talking_phone","specialized_texting_phone","person_sitting_down","person_standing_up","person_reading_document","object_transfer","person_picks_up_object","person_sets_down_object","hand_interaction","person_person_embrace","person_purchasing","person_laptop_interaction","vehicle_stopping","vehicle_starting","vehicle_reversing","vehicle_picks_up_person","vehicle_drops_off_person","abandon_package"]
 
@@ -203,6 +314,10 @@ for this_weights, this_test_segments, test_file in zip(weights_list, test_segmen
     modality_list.append(modality)
     num_class, args.train_list, val_list, root_path, prefix = dataset_config.return_dataset(args.dataset,
                                                                                             modality)
+    if args.if_prepared:
+        root_path = args.data_path
+    else:
+        root_path = args.inner_data_path
     print('=> shift: {}, shift_div: {}, shift_place: {}'.format(is_shift, shift_div, shift_place))
     net = TSN(num_class, this_test_segments if is_shift else 1, modality,
               base_model=this_arch,
@@ -335,8 +450,8 @@ def eval_video(video_data, net, this_test_segments, modality):
 proc_start_time = time.time()
 max_num = args.max_num if args.max_num > 0 else total_num
 
-top1 = AverageMeter()
-top5 = AverageMeter()
+# top1 = AverageMeter()
+# top5 = AverageMeter()
 
 for i, data_label_pairs in enumerate(zip(*data_iter_list)):
     with torch.no_grad():
@@ -356,9 +471,9 @@ for i, data_label_pairs in enumerate(zip(*data_iter_list)):
         for p, g in zip(ensembled_predict, this_label.cpu().numpy()):
             output.append([p[None, ...], g])
         cnt_time = time.time() - proc_start_time
-        prec1, prec5 = accuracy(torch.from_numpy(ensembled_predict), this_label, topk=(1, 5))
-        top1.update(prec1.item(), this_label.numel())
-        top5.update(prec5.item(), this_label.numel())
+        # prec1, prec5 = accuracy(torch.from_numpy(ensembled_predict), this_label, topk=(1, 5))
+        # top1.update(prec1.item(), this_label.numel())
+        # top5.update(prec5.item(), this_label.numel())
         if i % 20 == 0:
             # print(len(output))
             # video_pred_topall = [np.argsort(np.mean(x[0], axis=0).reshape(-1))[::-1][:args.topk] for x in output]
@@ -367,9 +482,7 @@ for i, data_label_pairs in enumerate(zip(*data_iter_list)):
             # print(video_prob_topall)
             # print(output[0])
             # raise RuntimeError("snip test")
-            print('video {} done, total {}/{}, average {:.3f} sec/video, '
-                  'moving Prec@1 {:.3f} Prec@5 {:.3f}'.format(i * args.batch_size, i * args.batch_size, total_num,
-                                                              float(cnt_time) / (i+1) / args.batch_size, top1.avg, top5.avg))
+            print('video {} done, total {}/{}, average {:.3f} sec/video, '.format(i * args.batch_size, i * args.batch_size, total_num,float(cnt_time) / (i+1) / args.batch_size))
 
 video_pred = [np.argmax(x[0]) for x in output]
 # video_pred_top5 = [np.argsort(np.mean(x[0], axis=0).reshape(-1))[::-1][:5] for x in output]
@@ -425,19 +538,19 @@ if args.actev:
 #                 f.write('{};{};{};{};{};{}\n'.format(*fill))
 
 
-cf = confusion_matrix(video_labels, video_pred).astype(float)
+# cf = confusion_matrix(video_labels, video_pred).astype(float)
 
-np.save('cm.npy', cf)
-cls_cnt = cf.sum(axis=1)
-cls_hit = np.diag(cf)
+# np.save('cm.npy', cf)
+# cls_cnt = cf.sum(axis=1)
+# cls_hit = np.diag(cf)
 
-cls_acc = cls_hit / cls_cnt
-print(cls_acc)
-upper = np.mean(np.max(cf, axis=1) / cls_cnt)
-print('upper bound: {}'.format(upper))
+# cls_acc = cls_hit / cls_cnt
+# print(cls_acc)
+# upper = np.mean(np.max(cf, axis=1) / cls_cnt)
+# print('upper bound: {}'.format(upper))
 
-print('-----Evaluation is finished------')
-print('Class Accuracy {:.02f}%'.format(np.mean(cls_acc) * 100))
-print('Overall Prec@1 {:.02f}% Prec@5 {:.02f}%'.format(top1.avg, top5.avg))
+# print('-----Evaluation is finished------')
+# print('Class Accuracy {:.02f}%'.format(np.mean(cls_acc) * 100))
+# print('Overall Prec@1 {:.02f}% Prec@5 {:.02f}%'.format(top1.avg, top5.avg))
 
 

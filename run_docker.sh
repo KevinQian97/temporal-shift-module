@@ -6,7 +6,7 @@ python main.py MEVA RGB \
      --batch-size 32 -j 0 --dropout 0.8 --consensus_type=avg --eval-freq=1 \
      --shift --shift_div=8 --shift_place=blockres \
      --gpus 0 1 2 3 \
-     --tune_from=/pretrained/TSM_kinetics_RGB_resnet50_shift8_blockres_avg_segment8_e50.pth
+     --tune_from=/pretrained/TSM_somethingv2_RGB_resnet50_shift8_blockres_avg_segment8_e45.pth
 
 
 python test_models.py MEVA \
@@ -47,16 +47,16 @@ sudo docker run --rm --gpus all --entrypoint /bin/bash -it -v /mnt/ssda/share/Ca
 
 python online_test.py MEVA \
     --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar \
-    --batch_size=16  --gpus 0 1 2 3  --dense_sample --test_crops 1 --if_prepared 
+    --batch_size=12  --gpus 0 1 2   --dense_sample --test_crops 1
 
 
 
-sudo docker run --rm --gpus all -v -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/props:/props -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/images:/imgs -v /mnt/ssda/results:/results actev_classification_tsm:v1 MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar --batch_size=12  --gpus 0 1 2 --test_crops 10
+sudo docker run --rm --gpus all -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/prop_gen/props:/props -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/prop_gen/images/validation:/imgs -v /mnt/ssda/results:/results actev_classification_tsm:v1 MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar --batch_size=12  --gpus 0 1 2  --dense_sample --test_crops 1
 
 sudo docker run --rm --gpus all -v /data/diva/kf1_vod2sfix/kf1_tst/prop_gen/props:/props -v /data/diva/kf1_vod2sfix/kf1_tst/prop_gen/images/validation:/imgs -v /data/yijunq/results:/results actev_classification_tsm:v3 MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar --batch_size=16  --gpus 0 1 2 3 --test_crops 10
 
 
-sudo docker commit --change='ENTRYPOINT ["python","/temporal-shift-module/online_test.py"]' 749324980d54 actev_classification_tsm:v3
+sudo docker commit --change='ENTRYPOINT ["python","/temporal-shift-module/online_test.py"]' 0d9435c05dbd actev_classification_tsm:v1
 
 
 sudo docker run -it --rm --gpus all  --entrypoint /bin/bash -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/props:/props -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/images:/imgs -v /mnt/ssda/results:/results actev_classification_tsm:v1

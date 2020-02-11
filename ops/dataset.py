@@ -9,6 +9,8 @@ from PIL import Image
 import os
 import numpy as np
 from numpy.random import randint
+import cv2
+
 
 
 class VideoRecord(object):
@@ -60,6 +62,8 @@ class TSNDataSet(data.Dataset):
     def _load_image(self, directory, idx):
         if self.modality == 'RGB' or self.modality == 'RGBDiff':
             try:
+                # img = cv2.imread(os.path.join(self.root_path, directory, self.image_tmpl.format(idx)))
+                # return [Image.fromarray(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))]
                 return [Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format(idx))).convert('RGB')]
             except Exception:
                 print('error loading image:', os.path.join(self.root_path, directory, self.image_tmpl.format(idx)))

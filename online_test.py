@@ -20,6 +20,7 @@ import json
 import os
 from multiprocessing import Pool
 import shutil
+import glob
 
 # options
 parser = argparse.ArgumentParser(description="TSM testing on the full validation set")
@@ -27,7 +28,7 @@ parser.add_argument('dataset', type=str)
 
 # may contain splits
 parser.add_argument('--weights', type=str, default=None)
-parser.add_argument('--test_segments', type=str, default=25)
+parser.add_argument('--test_segments', type=str, default="8")
 parser.add_argument('--dense_sample', default=False, action="store_true", help='use dense sample as I3D')
 parser.add_argument('--twice_sample', default=False, action="store_true", help='use twice sample for ensemble')
 parser.add_argument('--full_res', default=False, action="store_true",
@@ -86,7 +87,8 @@ def relocate_vids(vid,args,num):
     print(vid)
     print(num)
     vid_path = os.path.join(args.data_path,vid)
-    frames = os.listdir(vid_path)
+    frames = glob.glob(vid_path+"/*.jpg")
+    # frames = os.listdir(vid_path)
     new_vid_name = vid.split("_")[0]+".avi"
     prop_id = vid.split("_")[1]
 
@@ -199,11 +201,16 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict):
+def getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict,prop_path):
     new_dict = {}
     new_dict["filesProcessed"] = []
     new_dict["activities"] = []
     act_list = []
+    props = os.listdir(prop_path)
+    for prop in props:
+        if prop not in new_dict["filesProcessed"]:
+            new_dict["filesProcessed"].append(prefix_name)
+
     for vid_name in vid_names:
         prefix_name = vid_name.split("/")[0]
         if prefix_name not in new_dict["filesProcessed"]:
@@ -502,7 +509,7 @@ if args.actev:
         vid_names = f.readlines()
     vid_names = [n.split(' ')[0] for n in vid_names]
     assert len(vid_names) == len(video_pred)
-    output_dict,file_dict,eve_dict = getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict)
+    output_dict,file_dict,eve_dict = getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict,args.prop_path)
     json_str = json.dumps(output_dict,indent=4)
     with open(os.path.join(args.out_path,"output.json"), 'w') as save_json:
         save_json.write(json_str)

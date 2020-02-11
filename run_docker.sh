@@ -36,7 +36,29 @@ sudo docker run --rm --gpus all --entrypoint /bin/bash -it -v /data/diva/kf1_vod
 
 
 python online_test.py MEVA \
-    --weights=/checkpoint/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25/6.best.pth.tar \
+    --weights=/checkpoint/TSM_MEVA_RGB_resnet101_shift8_blockres_avg_segment8_e25/8.best.pth.tar \
     --test_segments=8 --test_crops=10 --topk 37\
-    --batch_size=32  --actev --softmax \
+    --batch_size=32  --actev --softmax --full_res\
     --gpus 0 1 2 3 --test_list /MEVA_TSM_LABEL/test_videofolder.txt 
+
+
+sudo docker run --rm --gpus all --entrypoint /bin/bash -it -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/props:/props -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/images:/imgs tsm:online_test
+
+
+python online_test.py MEVA \
+    --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar \
+    --batch_size=16  --gpus 0 1 2 3  --dense_sample --test_crops 1 --if_prepared 
+
+
+
+sudo docker run --rm --gpus all -v -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/props:/props -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/images:/imgs -v /mnt/ssda/results:/results actev_classification_tsm:v1 MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar --batch_size=12  --gpus 0 1 2 --test_crops 10
+
+sudo docker run --rm --gpus all -v /data/diva/kf1_vod2sfix/kf1_tst/prop_gen/props:/props -v /data/diva/kf1_vod2sfix/kf1_tst/prop_gen/images/validation:/imgs -v /data/yijunq/results:/results actev_classification_tsm:v3 MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar --batch_size=16  --gpus 0 1 2 3 --test_crops 10
+
+
+sudo docker commit --change='ENTRYPOINT ["python","/temporal-shift-module/online_test.py"]' 749324980d54 actev_classification_tsm:v3
+
+
+sudo docker run -it --rm --gpus all  --entrypoint /bin/bash -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/props:/props -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/images:/imgs -v /mnt/ssda/results:/results actev_classification_tsm:v1
+sudo docker run -it --rm --gpus all --entrypoint /bin/bash -v /data/diva/kf1_vod2sfix/kf1_tst/prop_gen/props:/props -v /data/yijunq/kf1_test_TSM_prop:/imgs -v /data/yijunq/results:/results actev_classification_tsm:v2
+

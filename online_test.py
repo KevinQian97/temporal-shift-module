@@ -56,10 +56,11 @@ parser.add_argument('--pretrain', type=str, default='imagenet')
 parser.add_argument('--topk', type=int, default=37)
 parser.add_argument('--class_num', type=int, default=37)
 parser.add_argument('--out_path', type=str, default="/results")
-parser.add_argument('--if_prepared',default = False,action="store_true")
+parser.add_argument('--if_prepared',default = True,action="store_true")
 parser.add_argument('--prop_path',type = str,default = "/props")
 parser.add_argument('--data_path',type = str,default = "/imgs")
 parser.add_argument('--inner_data_path',type = str,default = "/inner_imgs")
+parser.add_argument('--output_filename',type = str,default = "output.json")
 
 
 
@@ -209,7 +210,7 @@ def getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict,prop_path
     props = os.listdir(prop_path)
     for prop in props:
         if prop not in new_dict["filesProcessed"]:
-            new_dict["filesProcessed"].append(prefix_name)
+            new_dict["filesProcessed"].append(prop)
 
     for vid_name in vid_names:
         prefix_name = vid_name.split("/")[0]
@@ -219,6 +220,7 @@ def getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict,prop_path
         prefix_name = name.split("/")[0]
         start_frame = name.split("/")[1].split("_")[0]
         end_frame = name.split("/")[1].split("_")[1]
+        prop_id = name.split("/")[1].split("_")[2]
         for i in range(len(pred_all)):
             pred = pred_all[i]
             event = event_dict[int(pred)]
@@ -235,6 +237,7 @@ def getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict,prop_path
             end = end_frame
                 # raise RuntimeError("stop")
             act_dict["localization"] = {prefix_name:{start:1,end:0}}
+            act_dict["proposal_id"] = prop_id
             new_dict["activities"].append(act_dict)
     file_dict = get_file_index(new_dict["filesProcessed"])
     eve_dict = get_activity_index(act_list)
@@ -511,7 +514,7 @@ if args.actev:
     assert len(vid_names) == len(video_pred)
     output_dict,file_dict,eve_dict = getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict,args.prop_path)
     json_str = json.dumps(output_dict,indent=4)
-    with open(os.path.join(args.out_path,"output.json"), 'w') as save_json:
+    with open(os.path.join(args.out_path,args.output_filename), 'w') as save_json:
         save_json.write(json_str)
     json_str = json.dumps(file_dict,indent=4)
     with open(os.path.join(args.out_path,"file-index.json"), 'w') as save_json:

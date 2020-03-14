@@ -56,7 +56,7 @@ parser.add_argument('--pretrain', type=str, default='imagenet')
 parser.add_argument('--topk', type=int, default=37)
 parser.add_argument('--class_num', type=int, default=37)
 parser.add_argument('--out_path', type=str, default="/results")
-parser.add_argument('--if_prepared',default = True,action="store_true")
+parser.add_argument('--if_prepared',default = False,action="store_true")
 parser.add_argument('--prop_path',type = str,default = "/props")
 parser.add_argument('--data_path',type = str,default = "/imgs")
 parser.add_argument('--inner_data_path',type = str,default = "/inner_imgs")
@@ -65,7 +65,8 @@ parser.add_argument('--output_filename',type = str,default = "output.json")
 
 
 args = parser.parse_args()
-
+if not args.if_prepared:
+    args.inner_data_path = os.path.join(args.data_path,"inner_imgs")
 
 def get_prop_move(vid,prop_id,args):
     json_file = json.load(open(os.path.join(args.prop_path,vid,"annotation",os.path.splitext(vid)[0],"actv_id_type.json"),"r"))
@@ -141,6 +142,8 @@ def relocate_vids(vid,args,num):
 def prepare_data(args):
     n_jobs=128
     vids = os.listdir(args.data_path)
+    if "inner_imgs" in vids:
+        vids.remove("inner_imgs")
     print(len(vids))
     args_list = []
     num_list = []
@@ -160,6 +163,8 @@ def prepare_testlist(args):
     else:
         file_path = args.inner_data_path
     vids = os.listdir(file_path)
+    if "inner_imgs" in vids:
+        vids.remove("inner_imgs")
     for vid in vids:
         splits = os.listdir(os.path.join(file_path,vid))
         for split in splits:
@@ -172,12 +177,33 @@ if not args.if_prepared:
     prepare_data(args)
 prepare_testlist(args)
 
-event_dict = ["heu_negative","person_closes_facility_door","person_closes_vehicle_door","Closing_Trunk","person_enters_through_structure","person_enters_vehicle","person_exits_through_structure","person_exits_vehicle","person_loads_vehicle","Open_Trunk","person_opens_facility_door","person_opens_vehicle_door","Transport_HeavyCarry","person_unloads_vehicle","vehicle_turning_left","vehicle_turning_right","vehicle_u_turn","Riding","Talking","specialized_talking_phone","specialized_texting_phone","person_sitting_down","person_standing_up","person_reading_document","object_transfer","person_picks_up_object","person_sets_down_object","hand_interaction","person_person_embrace","person_purchasing","person_laptop_interaction","vehicle_stopping","vehicle_starting","vehicle_reversing","vehicle_picks_up_person","vehicle_drops_off_person","abandon_package"]
+# event list SDL2019
+# event_dict = ["heu_negative","person_closes_facility_door","person_closes_vehicle_door","Closing_Trunk","person_enters_through_structure",\
+# "person_enters_vehicle","person_exits_through_structure","person_exits_vehicle","person_loads_vehicle","Open_Trunk","person_opens_facility_door","person_opens_vehicle_door",\
+# "Transport_HeavyCarry","person_unloads_vehicle","vehicle_turning_left","vehicle_turning_right","vehicle_u_turn","Riding","Talking","specialized_talking_phone","specialized_texting_phone",\
+# "person_sitting_down","person_standing_up","person_reading_document","object_transfer","person_picks_up_object","person_sets_down_object","hand_interaction","person_person_embrace",\
+# "person_purchasing","person_laptop_interaction","vehicle_stopping","vehicle_starting","vehicle_reversing","vehicle_picks_up_person","vehicle_drops_off_person","abandon_package"]
 
-vehicle_events_list = ["vehicle_turning_left","vehicle_turning_right","vehicle_u_turn","vehicle_stopping","vehicle_starting","vehicle_reversing"]
-person_events_list = ["person_closes_facility_door","person_enters_through_structure","person_exits_through_structure","person_opens_facility_door",
-"Talking","specialized_talking_phone","specialized_texting_phone","person_picks_up_object","person_sets_down_object","hand_interaction","person_person_embrace","person_purchasing","person_laptop_interaction","abandon_package","Riding","person_sitting_down","person_standing_up","person_reading_document","object_transfer"]
-person_vehicle_interact_list = ["person_closes_vehicle_door","Closing_Trunk","person_enters_vehicle","person_exits_vehicle","person_loads_vehicle","Open_Trunk","person_opens_vehicle_door","Transport_HeavyCarry","Unloading","vehicle_picks_up_person","vehicle_drops_off_person","person_unloads_vehicle"]
+
+#event list SDL 2020
+event_dict = ["heu_negative","person_closes_facility_door","person_closes_vehicle_door","person_closes_trunk","person_enters_scene_through_structure",\
+"person_enters_vehicle","person_exits_scene_through_structure","person_exits_vehicle","person_loads_vehicle","person_opens_trunk","person_opens_facility_door","person_opens_vehicle_door",\
+"person_carries_heavy_object","person_unloads_vehicle","vehicle_turns_left","vehicle_turns_right","vehicle_makes_u_turn","person_rides_bicycle","person_talks_to_person","person_talks_on_phone","person_texts_on_phone",\
+"person_sits_down","person_stands_up","person_reads_document","person_transfers_object","person_picks_up_object","person_puts_down_object","hand_interacts_with_person","person_embraces_person",\
+"person_purchases","person_interacts_with_laptop","vehicle_stops","vehicle_starts","vehicle_reverses","vehicle_picks_up_person","vehicle_drops_off_person","person_abandons_package"]
+
+
+vehicle_events_list = ["vehicle_turns_left","vehicle_turns_right","vehicle_makes_u_turn","vehicle_stops","vehicle_starts","vehicle_reverses"]
+
+
+person_events_list = ["person_closes_facility_door","person_enters_scene_through_structure","person_exits_scene_through_structure","person_opens_facility_door",
+"person_talks_to_person","person_talks_on_phone","person_texts_on_phone","person_picks_up_object","person_puts_down_object","hand_interacts_with_person",\
+"person_embraces_person","person_purchases","person_interacts_with_laptop","person_abandons_package","person_rides_bicycle","person_sits_down","person_stands_up","person_reads_document","person_transfers_object"]
+
+
+
+person_vehicle_interact_list = ["person_closes_vehicle_door","person_closes_trunk","person_enters_vehicle","person_exits_vehicle","person_loads_vehicle",\
+"person_opens_trunk","person_opens_vehicle_door","person_carries_heavy_object","Unloading","vehicle_picks_up_person","vehicle_drops_off_person","person_unloads_vehicle"]
 
 if args.topk > args.class_num:
     print(args.topk)

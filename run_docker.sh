@@ -36,7 +36,7 @@ sudo docker run --rm --gpus all --entrypoint /bin/bash -it -v /data/diva/kf1_vod
 
 
 python online_test.py MEVA \
-    --weights=/checkpoint/TSM_MEVA_RGB_resnet101_shift8_blockres_avg_segment8_e25/8.best.pth.tar \
+    --weights=/checkpoints/TSM_MEVA_RGB_resnet101_shift8_blockres_avg_segment8_e25/8.best.pth.tar \
     --test_segments=8 --test_crops=10 --topk 37\
     --batch_size=32  --actev --softmax --full_res\
     --gpus 0 1 2 3 --test_list /MEVA_TSM_LABEL/test_videofolder.txt 
@@ -46,8 +46,8 @@ sudo docker run --rm --gpus all --entrypoint /bin/bash -it -v /mnt/ssda/share/Ca
 
 
 python online_test.py MEVA \
-    --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/3.best.pth.tar \
-    --batch_size=24  --gpus 0 1 2 3  --test_crops 10
+    --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar \
+    --batch_size=24  --gpus 0 1 2 3  --test_crops 1 
 
 
 
@@ -56,10 +56,13 @@ sudo docker run --rm --gpus all -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580
 sudo docker run --rm --gpus all -v /data/yijunq/prop_gen/props:/props -v /data/yijunq/prop_gen/images/validation:/imgs -v /data/yijunq/results:/results actev_classification_tsm:v1 MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar --batch_size=16  --gpus 0 1 2 3 --test_crops 10
 
 
-sudo docker commit --change='ENTRYPOINT ["python","/temporal-shift-module/online_test.py"]' be0232f659b6 actev_classification_tsm:v1
+sudo docker commit --change='ENTRYPOINT ["python","/temporal-shift-module/online_test.py"]' 40115bf603f6 actev_classification_tsm:v3
 
 
 sudo docker run -it --rm --gpus all  --entrypoint /bin/bash -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/props:/props -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/images:/imgs -v /mnt/ssda/results:/results actev_classification_tsm:v1
 
-sudo docker run -it --rm --gpus all --entrypoint /bin/bash -v /home/diva/temporal-shift-module:/temporal-shift-module -v /data/yijunq/iod_kf1_tst_prop/prop_gen/props:/props -v /data/yijunq/iod_kf1_tst_prop/prop_gen/images/validation:/imgs -v /data/yijunq/results:/results -v /data/yijunq/models/checkpoints:/checkpoints actev_classification_tsm:v1
+sudo docker run -it --rm --gpus all --entrypoint /bin/bash  -v /data/yijunq/iod_kf1_tst_prop/prop_gen/props:/props -v /data/yijunq/iod_kf1_tst_prop/prop_gen/images/validation:/imgs -v /data/yijunq/results:/results actev_classification_tsm:v3
+
+
+sudo docker run -it --rm --gpus all --entrypoint /bin/bash -v /home/diva/adaptive_temporal_shift_module:/adaptive_temporal_shift_module -v /data/yijunq/kinetics/imgs:/imgs -v /data/yijunq/kinetics400:/kinetics -v /data/yijunq/models/checkpoints:/checkpoints -v /data/yijunq/models/pretrained:/pretrained actev_classification_tsm:v2
 

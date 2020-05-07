@@ -47,7 +47,7 @@ sudo docker run --rm --gpus all --entrypoint /bin/bash -it -v /mnt/ssda/share/Ca
 
 python online_test.py MEVA \
     --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar \
-    --batch_size=24  --gpus 0 1 2 3  --test_crops 1 
+    --batch_size=24  --gpus 0 1 2 3  --test_crops 1 --if_mask
 
 
 
@@ -56,7 +56,7 @@ sudo docker run --rm --gpus all -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580
 sudo docker run --rm --gpus all -v /data/yijunq/prop_gen/props:/props -v /data/yijunq/prop_gen/images/validation:/imgs -v /data/yijunq/results:/results actev_classification_tsm:v1 MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar --batch_size=16  --gpus 0 1 2 3 --test_crops 10
 
 
-sudo docker commit --change='ENTRYPOINT ["python","/temporal-shift-module/online_test.py"]' 40115bf603f6 actev_classification_tsm:v3
+sudo docker commit --change='ENTRYPOINT ["python","/temporal-shift-module/online_test.py"]' fc4d13f5375a actev_classification_tsm:v3
 
 
 sudo docker run -it --rm --gpus all  --entrypoint /bin/bash -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/props:/props -v /mnt/ssda/share/Cache/dec2020_kf1_iodvmz_1580983945/prop_kf1tst2536_iodvmz/images:/imgs -v /mnt/ssda/results:/results actev_classification_tsm:v1
@@ -66,3 +66,14 @@ sudo docker run -it --rm --gpus all --entrypoint /bin/bash  -v /data/yijunq/iod_
 
 sudo docker run -it --rm --gpus all --entrypoint /bin/bash -v /home/diva/adaptive_temporal_shift_module:/adaptive_temporal_shift_module -v /data/yijunq/kinetics/imgs:/imgs -v /data/yijunq/kinetics400:/kinetics -v /data/yijunq/models/checkpoints:/checkpoints -v /data/yijunq/models/pretrained:/pretrained actev_classification_tsm:v2
 
+sudo docker run -it --rm --gpus all -v /data/yijunq/proposals:/props -v /data/yijunq/proposals:/imgs -v /data/yijunq/results:/results actev_classification_tsm:v3 \
+    MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar \
+    --batch_size=24  --gpus 0 1 2 3  --test_crops 1 --if_mask
+
+
+
+
+sudo docker run -it --rm --gpus all -v /data/yijunq/iod_kf1_tst_prop/prop_gen/props:/props -v /data/yijunq/iod_kf1_tst_prop/prop_gen/images/validation:/imgs \
+     -v /data/yijunq/results:/results actev_classification_tsm:v3 \
+    MEVA --weights=/checkpoints/TSM_MEVA_RGB_resnet50_shift8_blockres_avg_segment8_e25_dense_nl/ckpt.best.pth.tar \
+    --batch_size=24  --gpus 0 1 2 3  --test_crops 8 

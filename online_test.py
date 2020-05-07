@@ -61,12 +61,16 @@ parser.add_argument('--prop_path',type = str,default = "/props")
 parser.add_argument('--data_path',type = str,default = "/imgs")
 parser.add_argument('--inner_data_path',type = str,default = "/inner_imgs")
 parser.add_argument('--output_filename',type = str,default = "output.json")
+parser.add_argument('--if_mask',default = False,action="store_true")
 
 
 
 args = parser.parse_args()
 if not args.if_prepared:
     args.inner_data_path = os.path.join(args.data_path,"inner_imgs")
+
+if args.if_mask:
+    args.inner_data_path = args.data_path
 
 def get_prop_move(vid,prop_id,args):
     json_file = json.load(open(os.path.join(args.prop_path,vid,"annotation",os.path.splitext(vid)[0],"actv_id_type.json"),"r"))
@@ -108,7 +112,7 @@ def relocate_vids(vid,args,num):
         # f.write(os.path.join(new_vid_name,split_name)+" "+str(len(frames))+" 0"+"\n")
         for i in range(len(frames)):
             frame = frames[i]
-            new_frame = "img_"+str(i+1).zfill(5)+".jpg"
+            new_frame = "image_"+str(i+1).zfill(5)+".jpg"
             # new_frame = "img_"+frame.split("_")[1]
             src = os.path.join(args.data_path,vid,frame)
             det = os.path.join(args.inner_data_path,new_vid_name,split_name,new_frame)
@@ -131,7 +135,7 @@ def relocate_vids(vid,args,num):
             # f.write(os.path.join(new_vid_name,split_name)+" "+str(min(90,len(frames)-epoc*90))+" 0"+"\n")
             for i in range(epoc*90,min(len(frames),(epoc+1)*90)):
                 frame = frames[i]
-                new_frame = "img_"+str(i-epoc*90+1).zfill(5)+".jpg"
+                new_frame = "image_"+str(i-epoc*90+1).zfill(5)+".jpg"
                 # new_frame = "img_"+frame.split("_")[1]
                 src = os.path.join(args.data_path,vid,frame)
                 det = os.path.join(args.inner_data_path,new_vid_name,split_name,new_frame)
@@ -172,10 +176,28 @@ def prepare_testlist(args):
     return
 
 
+def prepare_testlist_mask(args):
+    f = open(args.test_list,"w")
+    file_path = args.data_path
+    vids = os.listdir(file_path)
+    if "inner_imgs" in vids:
+        vids.remove("inner_imgs")
+    for vid in vids:
+        props = os.listdir(os.path.join(file_path,vid))
+        if "props.txt" in props:
+            props.remove("props.txt")
+        for prop in props:
+            f.write(os.path.join(vid,prop)+" "+str(len(os.listdir(os.path.join(file_path,vid,prop))))+" 0"+"\n")
+    return
 
-if not args.if_prepared:
-    prepare_data(args)
-prepare_testlist(args)
+if not args.if_mask:
+    if not args.if_prepared:
+        prepare_data(args)
+    prepare_testlist(args)
+else:
+    prepare_testlist_mask(args)
+
+
 
 # event list SDL2019
 # event_dict = ["heu_negative","person_closes_facility_door","person_closes_vehicle_door","Closing_Trunk","person_enters_through_structure",\
@@ -247,6 +269,54 @@ def getoutput(vid_names,video_pred_topall,video_prob_topall,event_dict,prop_path
         start_frame = name.split("/")[1].split("_")[0]
         end_frame = name.split("/")[1].split("_")[1]
         prop_id = name.split("/")[1].split("_")[2]
+        for i in range(len(pred_all)):
+            pred = pred_all[i]
+            event = event_dict[int(pred)]
+            if event=="heu_negative":
+                continue
+            prob = prob_all[i]
+            if event not in act_list and event!="heu_negative":
+                act_list.append(event)
+            act_dict = {}
+            act_dict["activity"] = event
+            act_dict["activityID"] = int(pred)
+            act_dict["presenceConf"] = float(prob)
+            start = start_frame
+            end = end_frame
+                # raise RuntimeError("stop")
+            act_dict["localization"] = {prefix_name:{start:1,end:0}}
+            act_dict["proposal_id"] = prop_id
+            new_dict["activities"].append(act_dict)
+    file_dict = get_file_index(new_dict["filesProcessed"])
+    eve_dict = get_activity_index(act_list)
+    return new_dict,file_dict,eve_dict
+
+def getoutput_mask(vid_names,video_pred_topall,video_prob_topall,event_dict,prop_path):
+    new_dict = {}
+    new_dict["filesProcessed"] = []
+    new_dict["activities"] = []
+    act_list = []
+    props = os.listdir(prop_path)
+    prop_info_dict = {}
+    for prop in props:
+        if prop not in new_dict["filesProcessed"]:
+            new_dict["filesProcessed"].append(prop)
+        prop_info_dict[prop] = {}
+        with open(os.path.join(prop_path,prop,"props.txt"),"r") as p:
+            prop_infos = p.readlines()
+        for line in prop_infos:
+            prop_info_dict[prop][str(line.split(",")[0])] = {"start_frame":line.split(",")[1],"end_frame":line.split(",")[2]}
+
+    for vid_name in vid_names:
+        prefix_name = vid_name.split("/")[0]
+        if prefix_name not in new_dict["filesProcessed"]:
+            new_dict["filesProcessed"].append(prefix_name)
+
+    for name, pred_all, prob_all in zip(vid_names, video_pred_topall,video_prob_topall):
+        prefix_name = name.split("/")[0]
+        prop_id = name.split("/")[1]
+        start_frame = prop_info_dict[prefix_name][prop_id]["start_frame"]
+        end_frame = prop_info_dict[prefix_name][prop_id]["end_frame"]
         for i in range(len(pred_all)):
             pred = pred_all[i]
             event = event_dict[int(pred)]
@@ -533,7 +603,7 @@ video_labels = [x[1] for x in output]
 
 
 
-if args.actev:
+if args.actev and not args.if_mask:
     with open(test_file_list[0]) as f:
         vid_names = f.readlines()
     vid_names = [n.split(' ')[0] for n in vid_names]
@@ -548,6 +618,25 @@ if args.actev:
     json_str = json.dumps(eve_dict,indent=4)
     with open(os.path.join(args.out_path,"activity-index.json"), 'w') as save_json:
         save_json.write(json_str)
+
+elif args.actev:
+    with open(test_file_list[0]) as f:
+        vid_names = f.readlines()
+    vid_names = [n.split(' ')[0] for n in vid_names]
+    assert len(vid_names) == len(video_pred)
+    output_dict,file_dict,eve_dict = getoutput_mask(vid_names,video_pred_topall,video_prob_topall,event_dict,args.prop_path)
+    json_str = json.dumps(output_dict,indent=4)
+    with open(os.path.join(args.out_path,args.output_filename), 'w') as save_json:
+        save_json.write(json_str)
+    json_str = json.dumps(file_dict,indent=4)
+    with open(os.path.join(args.out_path,"file-index.json"), 'w') as save_json:
+        save_json.write(json_str)
+    json_str = json.dumps(eve_dict,indent=4)
+    with open(os.path.join(args.out_path,"activity-index.json"), 'w') as save_json:
+        save_json.write(json_str)
+
+
+
     
 
 

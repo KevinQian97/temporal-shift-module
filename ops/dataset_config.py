@@ -107,7 +107,7 @@ def return_MEVA(modality):
         root_data = ROOT_DATASET + 'MEVA_TSM_PROP'
         filename_imglist_train = 'MEVA_TSM_LABEL/train_videofolder.txt'
         filename_imglist_val = 'MEVA_TSM_LABEL/val_videofolder.txt'
-        prefix = 'img_{:05d}.jpg'
+        prefix = 'image_{:05d}.jpg'
     else:
         raise NotImplementedError('no such modality:' + modality)
     return filename_categories, filename_imglist_train, filename_imglist_val, root_data, prefix
